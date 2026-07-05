@@ -1,0 +1,14 @@
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  padding: 10px;
+  display: block;
+  backdrop-filter: blur(6px);
+}
+
+.amt-prc {
+    display: flex;
+    justify-content: space-between;
+}

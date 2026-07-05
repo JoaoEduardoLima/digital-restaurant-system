@@ -1,0 +1,134 @@
+{% extends "layout_menu.html" %}
+
+{% block title %}Order{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <ul class="nav nav-pills mb-3 d-flex justify-content-center py-3 sticky-top" id="pills-tab" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#cart">Cart</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#status">Order Status</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="pills-tabContent">
+        <h6>Table: {{ table_number }}</h6>
+
+        <div class="tab-pane fade show active" id="cart">
+            {% if not cart %}
+            <p>Your cart is empty.</p>
+            {% else %}
+            <ul class="list-group">
+                {% for item in cart %}
+                <li class="list-group-item">
+                    <strong>{{ item.name | title }}</strong>
+                    <div class="amt-prc">
+                        <p>Amount: {{ item.amount }}</p>
+                        <p>{{ item.price | usd }}</p>
+                    </div>
+                    <p><em>{{ item.note }}</em></p>
+                    <button class="btn btn-sm btn-danger remove-item-btn"
+                        data-item-id="{{ item.id_item }}">Remove</button>
+                </li>
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn btn-success mt-3 w-100" data-bs-toggle="modal" data-bs-target="#sendModal">
+                Send
+            </button>
+            <button id="clearCartBtn" class="btn btn-danger mt-2 w-100">Clear Cart</button>
+            {% endif %}
+
+            <!-- Modal -->
+            <div class="modal fade" id="sendModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Order for the table {{ table_number }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label for="clientName" class="form-label">What's your name?</label>
+                            <input type="text" id="clientName" class="form-control" required>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="sendOrderBtn" class="btn btn-primary">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade show" id="status">
+            <!-- button to refresh -->
+            <button class="btn btn-outline-primary mb-3" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <ul class="list-group">
+                <!-- 
+                [{'customer_name': 'João', 
+                  'items': [{'item_name': 'bacon burger', 'amount': 1, 'note': '', 'order_status': 'pending'},
+                            {'item_name': 'bacon burger', 'amount': 2, 'note': '', 'order_status': 'pending'},
+                            {'item_name': 'bacon burger', 'amount': 1, 'note': '', 'order_status': 'pending'},
+                            {'item_name': 'fries', 'amount': 1, 'note': '', 'order_status': 'pending'}]}]
+                -->
+                {% for item in items %}
+                <li class="list-group-item">
+                    <div style="background-color: rgba(30, 143, 255, 0.303);"><strong>{{ item.customer_name | title
+                            }}</strong></div>
+                    <ol>
+                        {% for sub_item in item["items"] %}
+                        <li>
+                            <div class="">
+                                <div class="">
+                                    <strong>{{ sub_item.item_name | title }}</strong> x {{ sub_item.amount }}
+                                </div>
+                                {% if sub_item.note %}
+                                <div>
+                                    <em>{{ sub_item.note }}</em>
+                                </div>
+                                {% endif %}
+                                <div class="badge bg-secondary">
+                                    {{ sub_item.order_status | translate_status_customer }}
+                                </div>
+
+                                <div style="font-size: small; opacity: 0.8;">
+                                    Updated: {{ sub_item.order_updated_at }}
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+
+                    </ol>
+                    {% endfor %}
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="cart-data" type="application/json">{{ cart | tojson }}</script>
+<script>
+    const cartItems = JSON.parse(document.getElementById("cart-data").textContent || "[]");
+</script>
+<script src="{{ url_for('static', filename='js/order.js') }}"></script>
+
+<script>
+refreshBtn.addEventListener("click", function () {
+    sessionStorage.setItem("activeTab", "status");
+    location.reload();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const activeTab = sessionStorage.getItem("activeTab");
+    if (activeTab === "status") {
+        const statusTab = document.querySelector('button[data-bs-target="#status"]');
+        if (statusTab) statusTab.click();
+        sessionStorage.removeItem("activeTab");
+    }
+});
+</script>
+{% endblock %}

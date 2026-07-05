@@ -1,0 +1,113 @@
+{% extends "layout_admin.html" %}
+
+{% block title %}Kitchen{% endblock %}
+
+{% block main %}
+<div class="container py-4">
+    <h2>Kitchen</h2>
+    <div id="orders-container">
+        {% if orders %}
+        <!-- Renderização inicial -->
+        {% for order in orders %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                
+                <span><strong>Table:</strong> {{ order.table_number }}</span>
+                <span><strong>Customer:</strong> {{ order.customer_name }}</span>
+                <span
+                    class="{% if order.order_status == 'pending' %}text-warning{% elif order.order_status == 'in_progress' %}text-info{% endif %}">
+                    <strong>Status:</strong> {{ order.order_status | translate_status_restaurant }}
+                </span>
+                <span><strong>Updated:</strong> {{ order.order_updated_at }}</span>
+                <form method="POST" class="d-flex align-items-center">
+                    <input type="hidden" name="order_id" value="{{ order.order_id }}">
+                    <input type="hidden" name="new_status" value="{{ 'ready' if order.order_status == 'in_progress' else 'in_progress' }}">
+                    <button type="submit" class="btn btn-sm btn-primary">Update Status</button>
+                </form>
+
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Items</h5>
+                <ul class="list-group">
+                    {% for item in order["items"] %}
+                    <li class="list-group-item">
+                        <span>{{ item.amount }} x {{ item.item_name | title }}</span>
+                        <span class="text-info"><em>{{ item.note }}</em></span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p>No orders found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const source = new EventSource("/restaurant/kitchen/stream");
+    source.onmessage = function (event) {
+        const orders = event.data;
+        atualizarDashboard(orders);
+    };
+
+    function atualizarDashboard(orders) {
+        const container = document.querySelector("#orders-container");
+        container.innerHTML = "";
+        orders = JSON.parse(orders);
+        if (orders.length === 0) {
+            container.innerHTML = "<p>No orders found.</p>";
+            return;
+        }
+
+        orders.forEach(order => {
+            const card = document.createElement("div");
+            card.className = "card mb-3";
+            card.innerHTML = `
+                <div class="card-header d-flex justify-content-between">
+                    
+                    <span><strong>Table:</strong> ${order.table_number}</span>
+                    <span><strong>Customer:</strong> ${order.customer_name}</span>
+                    <span class="${order.order_status === 'pending' ? 'text-warning' : order.order_status === 'in_progress' ? 'text-info' : ''}">
+                        <strong>Status:</strong> ${translateStatus(order.order_status)}
+                    </span>
+                    <span><strong>Updated:</strong> ${order.order_updated_at}</span>
+                    <form method="POST" class="d-flex align-items-center">
+                        <input type="hidden" name="order_id" value="${order.order_id}">
+                       <input type="hidden" name="new_status" value="${order.order_status === 'in_progress' ? 'ready' : 'in_progress'}">
+                        <button type="submit" class="btn btn-sm btn-primary">Update Status</button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Items</h5>
+                    <ul class="list-group">
+                        ${order.items.map(item => `
+                            <li class="list-group-item">
+                                <span>${item.amount} x ${item.item_name}</span>
+                                <span class="text-info"><em>${item.note}</em></span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+            container.appendChild(card);
+        });
+    }
+
+    function translateStatus(status) {
+        switch (status) {
+            case 'pending':
+                return 'Pending';
+            case 'in_progress':
+                return 'In Progress';
+            case 'ready':
+                return 'Ready';
+            default:
+                return status;
+        }
+    }
+</script>
+
+{% endblock %}
